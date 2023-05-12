@@ -1,76 +1,104 @@
+import { app } from '@electron/remote';
 
-import { memoize, search } from 'cerebro-tools';
-//import preprocessJson from './preprocessJson';
-import axios from 'axios'
+import icon from './icons/joplin_icon.png'
+// const deleteIcon = require('./icons/joplin_icon.png');
 
-var token = settings.get('token')
-// var notebook = settings.get('notebook')
-axios.defaults.baseURL = 'localhost:81184'
-axios.interceptors.request.use((config) => {
-  config.params = config.params || {}
-  config.params.token = ''
-  return config
-})
+import initialize from './lib/initialize'
+import selectSnippet from './lib/selectSnippet'
+import createSnippet from './lib/createSnippet'
+import deleteSnippet from './lib/deleteSnippet'
 
-function getSnippetTagId () {
-    return axios.get('/search?query=snippet&type=tag&fields=id',{
-      })
-      .then(response => {
-        console.log(response.data)
-        return response.data.items[0].id
-      })
-      .catch(error => {
-        return error
-      })
+const plugin = async ({ term, display, actions, settings }) => {
+    let results = [];
+
+    // split term into command and param
+    let command = term.split(' ')[0];
+    let param = term.split(' ')[1] || '';
+
+    // list of available commands
+    let commands = [
+        {
+            title: 'Create joplin snippet',
+            subtitle: 'from clipboard content',
+            term: 'jsnipc',
+            icon: icon,
+            onSelect: (ev) => {
+                ev.preventDefault();
+                actions.replaceTerm('jsnipc ');
+            }
+        },
+        {
+            title: 'Search snippets',
+            term: 'jsnip',
+            icon: icon,
+            onSelect: (ev) => {
+                ev.preventDefault();
+                actions.replaceTerm('jsnip ');
+            }
+        },
+        {
+            title: 'Delete snippets',
+            term: 'jsnipd',
+            icon: icon,
+            onSelect: (ev) => {
+                ev.preventDefault();
+                actions.replaceTerm('jsnipd ');
+            }
+        }
+    ];
+
+    // handle different commands
+    switch (command) {
+        case 'jsnip':
+            results = await selectSnippet(param, actions, settings);
+            break;
+        case 'jsnipc':
+            results = createSnippet(param, settings);
+            break;
+        case 'jsnipd':
+            results = await deleteSnippet(param, settings);
+            break;
+    }
+
+    // search without keyword "snip"
+    if (settings.disableSearchKeyword && param === '') {
+        results = selectSnippet(snippetsDir, command, actions);
+    }
+
+    // add autocomplete for possible commands
+    results = [
+        ...results,
+        ...commands.filter(item => (command != item.term && item.term.indexOf(command) !== -1))
+    ];
+
+    // display results
+    if (results.length > 0) {
+        // add icon to results
+        results.map(obj => {
+            if (!obj.icon) {
+                obj.icon = icon
+            }
+        });
+
+        display(results);
+    }
+
 }
 
-function getNotes(id) {
-    return axios.get('/search?query=snippet&type=tag&fields=id',{
-      })
-      .then(response => {
-        console.log(response.data)
-        return response.data.items[0].id
-      })
-      .catch(error => {
-        return error
-      })
-
-}
-
-function getAllSnippetNotes () {
-    var snippetTagId = this.getSnippetTagId()
-    return axios.get('/tags/'+snippetTagId+'/notes?&fields=id,title,body,updated_time,', {
-      })
-      .then(response => {
-        return response.data
-      })
-      .catch(error => {
-        return error
-      })
-      .finally(() => {
-        console.log('getAllNotes finish')
-      })
-}
-
-// Memoize your fetched data from external API
-const data = memoize(getAllNotes(), {
-  length: false,
-  Promise: 'then',
-  maxAge: 30 * 60 * 1000,
-  preFetch: true
-  }
-)
-
-
-const fn = ({ term, display }) => {
-  // Put your plugin code here
-  display({
-    title: `Joplin Snippets: ${term}`
-  })
-}
-
-module.exports = {
-  name: 'Joplin Snippets',
-  keyword: 'js',
-  fn,
-}
+export default {
+    initialize,
+    fn: plugin,
+    icon: icon,
+    settings: {
+        disableSearchKeyword: {
+            type: "bool",
+            label: 'Search without keyword "jsnip"',
+            defaultValue: false,
+        },
+        joplinToken: {
+            type: "string",
+            label: "Joplin API Token",
+            defaultValue: ""
+        }
+    }
+};

@@ -2,16 +2,20 @@
   "name": "cerebro-joplin-snippet",
   "version": "0.1.0",
   "dependencies": {
+    "axios": "^0.19.2",
     "cerebro-tools": "^0.1.8",
-    "cerebro-ui": "^0.0.16"
+    "@cerebroapp/cerebro-ui": "^1.0.4",
+    "react-highlight": "^0.14.0"
   },
   "devDependencies": {
-    "cerebro-scripts": "0.0.25"
+    "@cerebroapp/cerebro-scripts": "^1.0.0-alpha.6"
   },
   "main": "dist/index.js",
   "keywords": [
     "cerebro",
-    "cerebro-plugin"
+    "cerebro-plugin",
+    "cerebro-plugin-joplin",
+    "cerebro-plugin-joplin-snippet"
   ],
   "scripts": {
     "start": "cerebro-scripts start",
